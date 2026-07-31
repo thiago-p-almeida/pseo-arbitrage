@@ -1,0 +1,39 @@
+name: Deploy Astro to Cloudflare Workers
+
+on:
+  push:
+    branches:
+      - main
+      - master # Trata ambas as ramificações de branch padrão
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    name: Build & Deploy
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js (v22)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Astro Project
+        run: pnpm build
+
+      - name: Deploy to Cloudflare Workers Network
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # Executa o deploy usando o arquivo gerado pelo build do adaptador do Astro
+          command: deploy --config dist/server/wrangler.json
