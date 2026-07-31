@@ -1,0 +1,58 @@
+---
+interface Props {
+  title: string;
+  description: string;
+  canonicalUrl?: string;
+  jsonLdSchema?: Record<string, any>;
+}
+
+const { title, description, canonicalUrl, jsonLdSchema } = Astro.props;
+const currentUrl = canonicalUrl || Astro.url.href;
+---
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={currentUrl} />
+
+    <!-- Google Consent Mode v2 Nativo (Default Denied) -->
+    <script is:inline>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('consent', 'default', {
+        'ad_storage': 'denied',
+        'analytics_storage': 'denied',
+        'ad_user_data': 'denied',
+        'ad_personalization': 'denied'
+      });
+    </script>
+
+    <!-- Schema JSON-LD Dinâmico para Rich Snippets -->
+    {jsonLdSchema && (
+      <script type="application/ld+json" set:html={JSON.stringify(jsonLdSchema)} />
+    )}
+  </head>
+  <body class="bg-slate-50 text-slate-900 font-sans antialiased min-h-screen flex flex-col">
+    <header class="bg-slate-900 text-white border-b border-slate-800">
+      <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+        <a href="/" class="text-xl font-bold tracking-tight text-blue-400">
+          AutoParts & Tech <span class="text-xs bg-blue-900/80 text-blue-300 px-2 py-0.5 rounded">pSEO</span>
+        </a>
+      </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 py-6">
+      <slot />
+    </main>
+
+    <footer class="bg-slate-900 text-slate-400 border-t border-slate-800 text-sm py-6 mt-12">
+      <div class="max-w-7xl mx-auto px-4 text-center">
+        <p>&copy; {new Date().getFullYear()} AutoParts & Tech. Todos os direitos reservados.</p>
+      </div>
+    </footer>
+  </body>
+</html>

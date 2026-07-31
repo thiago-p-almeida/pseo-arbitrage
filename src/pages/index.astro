@@ -1,0 +1,70 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { getFallbackProducts } from '../lib/d1';
+
+const locals = Astro.locals as any;
+const d1 = locals?.runtime?.env?.DB || locals?.env?.DB || locals?.DB;
+
+let products: any[] = [];
+if (d1) {
+  products = await getFallbackProducts(d1, 'pastilha-freio', 6);
+}
+---
+
+<Layout 
+  title="AutoParts & Tech - Comparador de Preços e Compatibilidade" 
+  description="Compare preços de peças automotivas e eletrônicos com busca por código OEM, EAN e compatibilidade exata."
+>
+  <div class="space-y-12">
+    <!-- Hero Section -->
+    <section class="text-center space-y-4 py-8 bg-slate-900 text-white rounded-2xl p-8 shadow-xl">
+      <h1 class="text-4xl font-extrabold tracking-tight sm:text-5xl text-blue-400">
+        Encontre Peças Automotivas e Eletrônicos
+      </h1>
+      <p class="text-lg text-slate-300 max-w-2xl mx-auto">
+        Busque por código OEM, EAN ou compatibilidade exata de veículo. Menor preço garantido no Edge.
+      </p>
+    </section>
+
+    <!-- Catálogo em Destaque -->
+    <section class="space-y-6">
+      <h2 class="text-2xl font-bold text-slate-900 border-b pb-2">Produtos em Destaque</h2>
+      
+      {products.length > 0 ? (
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {products.map((prod) => (
+            <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
+              <div>
+                <span class="text-xs font-semibold text-blue-600 uppercase tracking-wider">{prod.category}</span>
+                <h3 class="text-lg font-bold text-slate-900 mt-1">{prod.title}</h3>
+                <p class="text-xs text-slate-500 mt-1">OEM: {prod.oem_code || prod.ean_upc || 'Universal'}</p>
+              </div>
+              <div class="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
+                <div>
+                  <span class="text-xs text-slate-400 block">A partir de</span>
+                  <span class="text-xl font-extrabold text-emerald-600">R$ {Number(prod.lowest_price).toFixed(2)}</span>
+                </div>
+                <a 
+                  href={`/${prod.slug}`} 
+                  class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors"
+                >
+                  Ver Ofertas &rarr;
+                </a>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div class="bg-white rounded-xl border border-slate-200 p-6 text-center space-y-4">
+          <p class="text-slate-600">Catálogo pronto no Edge! Acesse o nosso produto de teste publicado:</p>
+          <a 
+            href="/pastilha-de-freio-honda-civic-2018" 
+            class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2.5 rounded-lg text-sm transition-colors shadow-sm"
+          >
+            Ver Pastilha de Freio Honda Civic 2018 &rarr;
+          </a>
+        </div>
+      )}
+    </section>
+  </div>
+</Layout>
