@@ -1,0 +1,74 @@
+---
+// src/components/AdBlock.astro
+interface Props {
+  adSlot: string;
+  adClient?: string;
+  className?: string;
+}
+
+const { 
+  adSlot, 
+  adClient = "ca-pub-0000000000000000", // Substituiremos pelo seu ID real depois
+  className = "w-full min-h-[250px] bg-gray-50 flex items-center justify-center rounded-lg border border-gray-100" 
+} = Astro.props;
+---
+
+<div 
+  class={`ad-container ${className}`} 
+  data-ad-client={adClient} 
+  data-ad-slot={adSlot}
+>
+  <!-- Placeholder visual enquanto o anúncio não carrega -->
+  <span class="text-xs text-gray-400 tracking-widest uppercase">Publicidade</span>
+</div>
+
+<script>
+  // Vanilla JS: Leve, sem dependências, roda direto no navegador
+  document.addEventListener('DOMContentLoaded', () => {
+    const adContainers = document.querySelectorAll('.ad-container');
+    
+    if (!adContainers.length || !window.IntersectionObserver) return;
+
+    let scriptLoaded = false;
+
+    const loadAdSense = () => {
+      if (scriptLoaded) return;
+      const script = document.createElement('script');
+      script.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js";
+      script.async = true;
+      script.crossOrigin = "anonymous";
+      document.head.appendChild(script);
+      scriptLoaded = true;
+    };
+
+    const observer = new IntersectionObserver((entries, obs) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          loadAdSense();
+          
+          const container = entry.target as HTMLElement;
+          const client = container.dataset.adClient;
+          const slot = container.dataset.adSlot;
+
+          // Injeta a tag do Google
+          container.innerHTML = `
+            <ins class="adsbygoogle"
+                 style="display:block"
+                 data-ad-client="${client}"
+                 data-ad-slot="${slot}"
+                 data-ad-format="auto"
+                 data-full-width-responsive="true"></ins>
+          `;
+          
+          // Inicializa o anúncio
+          (window.adsbygoogle = window.adsbygoogle || []).push({});
+          
+          // Para de observar este bloco específico
+          obs.unobserve(container);
+        }
+      });
+    }, { rootMargin: '200px' }); // Carrega 200px antes de aparecer na tela
+
+    adContainers.forEach(container => observer.observe(container));
+  });
+</script>

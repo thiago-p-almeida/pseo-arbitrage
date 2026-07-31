@@ -1,0 +1,42 @@
+---
+// src/components/AffiliateCTA.astro
+interface Props {
+  baseUrl: string;
+  subId: string;
+  storeName: 'Amazon' | 'Mercado Livre';
+  price?: string;
+}
+
+const { baseUrl, subId, storeName, price } = Astro.props;
+
+// Constrói a URL final com o parâmetro de rastreamento
+// Ex: ?subid=ENCRYPTED_HASH
+const finalUrl = new URL(baseUrl);
+finalUrl.searchParams.set('subid', subId);
+
+// Cores dinâmicas baseadas na loja
+const isAmazon = storeName === 'Amazon';
+const btnColor = isAmazon 
+  ? 'bg-amber-500 hover:bg-amber-600 text-gray-900' 
+  : 'bg-yellow-400 hover:bg-yellow-500 text-blue-900';
+---
+
+<a 
+  href={finalUrl.toString()} 
+  target="_blank" 
+  rel="nofollow sponsored"
+  class={`group relative flex items-center justify-between w-full sm:w-auto px-6 py-4 rounded-xl font-bold text-lg transition-all duration-200 shadow-lg hover:shadow-xl ${btnColor}`}
+>
+  <span class="flex flex-col">
+    <span>Ver oferta no {storeName}</span>
+    {price && <span class="text-sm font-medium opacity-80">A partir de {price}</span>}
+  </span>
+  
+  <!-- Ícone de seta com animação no hover -->
+  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 transform group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+  </svg>
+
+  <!-- Efeito de pulso sutil para chamar atenção -->
+  <span class="absolute -inset-1 rounded-xl border-2 border-white opacity-20 group-hover:animate-ping pointer-events-none"></span>
+</a>
