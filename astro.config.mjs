@@ -8,8 +8,6 @@ export default defineConfig({
   integrations: [tailwind()],
   adapter: cloudflare({
     imageService: 'cloudflare',
-    platformProxy: {
-      enabled: true
-    }
+    configPath: './wrangler.toml'
   }),
 });

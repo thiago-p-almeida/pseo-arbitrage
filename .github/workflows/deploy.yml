@@ -30,11 +30,18 @@ jobs:
       - name: Build Astro Project
         run: pnpm build
 
+      - name: Validate Generated Wrangler Config
+        run: |
+          test -f dist/server/wrangler.json || { echo "::error::dist/server/wrangler.json não foi gerado pelo build"; exit 1; }
+          test -f dist/server/entry.mjs || { echo "::error::dist/server/entry.mjs não foi gerado pelo build"; exit 1; }
+          echo "✅ Config e entry do Worker validados com sucesso"
+
       - name: Deploy to Cloudflare Workers Network
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: '4.115.0'
           # Na v14 do @astrojs/cloudflare, o build gera dist/server/wrangler.json
           # com o entry do Worker. Deploy deve apontar para esse config.
           command: deploy --config dist/server/wrangler.json
