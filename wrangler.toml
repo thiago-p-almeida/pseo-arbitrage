@@ -6,7 +6,3 @@ compatibility_date = "2024-09-25"
 binding = "DB"
 database_name = "pseo-db"
 database_id = "b86660ea-2b4b-487a-abc6-2415f17d8822"
-
-# Variáveis de Ambiente do Edge Worker
-[vars]
-SECRET_KEY = "sua-chave-secreta-para-criptografia-stateless-subid"

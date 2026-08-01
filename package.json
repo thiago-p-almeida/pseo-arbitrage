@@ -18,5 +18,12 @@
   },
   "devDependencies": {
     "tailwindcss": "^3.4.19"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp",
+      "workerd"
+    ]
   }
 }

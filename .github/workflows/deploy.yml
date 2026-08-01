@@ -38,3 +38,8 @@ jobs:
           # Na v14 do @astrojs/cloudflare, o build gera dist/server/wrangler.json
           # com o entry do Worker. Deploy deve apontar para esse config.
           command: deploy --config dist/server/wrangler.json
+          # Injeta o SECRET_KEY como secret do Cloudflare (não fica no repositório)
+          secrets: |
+            SECRET_KEY
+        env:
+          SECRET_KEY: ${{ secrets.CLOUDFLARE_SECRET_KEY }}
