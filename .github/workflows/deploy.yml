@@ -35,5 +35,6 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          # REMOVEMOS o --config dist/server/wrangler.json para usar o wrangler.toml da raiz!
-          command: deploy
+          # Na v14 do @astrojs/cloudflare, o build gera dist/server/wrangler.json
+          # com o entry do Worker. Deploy deve apontar para esse config.
+          command: deploy --config dist/server/wrangler.json
