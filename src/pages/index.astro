@@ -1,9 +1,9 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import { getFallbackProducts } from '../lib/d1';
+import { env } from 'cloudflare:workers';
 
-const locals = Astro.locals as any;
-const d1 = locals?.runtime?.env?.DB || locals?.env?.DB || locals?.DB;
+const d1 = env.DB;
 
 let products: any[] = [];
 if (d1) {
