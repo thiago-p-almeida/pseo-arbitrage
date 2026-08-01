@@ -35,5 +35,5 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          # Executa o deploy usando o arquivo gerado pelo build do adaptador do Astro
-          command: deploy --config dist/server/wrangler.json
+          # REMOVEMOS o --config dist/server/wrangler.json para usar o wrangler.toml da raiz!
+          command: deploy
