@@ -71,9 +71,46 @@ const source = fbclid ? 'meta' : gclid ? 'google' : 'unknown';
 // Fallback seguro: se SECRET_KEY não existir, usa um hash fixo de dev
 const secretKey = env.SECRET_KEY || 'dev-secret-key-nao-usar-em-producao';
 const subId = await generateStatelessSubId(clickId, source, secretKey);
+
+// 7. JSON-LD Schema para Rich Snippets (Seção 4.2 dos docs)
+const prices = offers.map((o: any) => Number(o.price)).filter((p: number) => !isNaN(p));
+const lowPrice = prices.length ? Math.min(...prices) : product.lowest_price;
+const highPrice = prices.length ? Math.max(...prices) : product.lowest_price;
+
+const jsonLdSchema = {
+  "@context": "https://schema.org/",
+  "@type": "Product",
+  "name": product.title,
+  "description": product.description,
+  "mpn": product.oem_code || product.ean_upc || undefined,
+  "brand": {
+    "@type": "Brand",
+    "name": product.category === 'eletronicos' ? (product.title.split(' ')[0] || 'Genérico') : 'OEM'
+  },
+  "offers": {
+    "@type": "AggregateOffer",
+    "url": Astro.url.href,
+    "priceCurrency": "BRL",
+    "lowPrice": lowPrice,
+    "highPrice": highPrice,
+    "offerCount": offers.length,
+    "availability": "https://schema.org/InStock"
+  },
+  "isAccessoryOrSparePartFor": product.category !== 'eletronicos' ? [
+    {
+      "@type": "Vehicle",
+      "brand": product.title.includes('Honda') ? 'Honda' : product.title.includes('Toyota') ? 'Toyota' : undefined,
+      "model": product.title.includes('Civic') ? 'Civic' : product.title.includes('Corolla') ? 'Corolla' : undefined
+    }
+  ] : undefined
+};
 ---
 
-<Layout title={`${product.title} - Análise e Melhor Preço`} description={product.description}>
+<Layout 
+  title={`${product.title} - Análise e Melhor Preço`} 
+  description={product.description}
+  jsonLdSchema={jsonLdSchema}
+>
   <main class="max-w-4xl mx-auto px-4 py-8">
     
     <!-- Breadcrumb pSEO -->
