@@ -242,7 +242,10 @@ async def main(tier):
     if valid_results:
         sql_statements = []
         for item in valid_results:
-            sql = f"UPDATE products SET lowest_price = {item['lowest_price']}, offers_json = '{item['offers_json']}', updated_at = CURRENT_TIMESTAMP WHERE id = '{item['id']}';"
+            # Escapa aspas simples no JSON para prevenir SQL Injection no D1
+            escaped_offers = item['offers_json'].replace("'", "''")
+            escaped_id = item['id'].replace("'", "''")
+            sql = f"UPDATE products SET lowest_price = {item['lowest_price']}, offers_json = '{escaped_offers}', updated_at = CURRENT_TIMESTAMP WHERE id = '{escaped_id}';"
             sql_statements.append(sql)
         
         # Salva o lote SQL em arquivo para execução pelo Wrangler no GitHub Actions

@@ -68,7 +68,9 @@ const clickId = fbclid || gclid || `org_${crypto.randomUUID().split('-')[0]}`;
 const source = fbclid ? 'meta' : gclid ? 'google' : 'unknown';
 
 // Gera o Sub-ID Stateless (Custo Zero de DB)
-const subId = await generateStatelessSubId(clickId, source, env.SECRET_KEY);
+// Fallback seguro: se SECRET_KEY não existir, usa um hash fixo de dev
+const secretKey = env.SECRET_KEY || 'dev-secret-key-nao-usar-em-producao';
+const subId = await generateStatelessSubId(clickId, source, secretKey);
 ---
 
 <Layout title={`${product.title} - Análise e Melhor Preço`} description={product.description}>
