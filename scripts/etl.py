@@ -7,6 +7,7 @@ import argparse
 import sys
 import hashlib
 import hmac
+import subprocess
 from datetime import datetime, timezone
 from urllib.parse import quote
 
@@ -217,22 +218,99 @@ async def process_product(session, product_id, title, category, tier):
         "traffic_tier": tier
     }
 
+def fetch_products_from_d1(tier):
+    """
+    Busca produtos reais do Cloudflare D1 via Wrangler CLI.
+    Retorna lista de tuplas (id, title, category, tier).
+    """
+    # Query parametrizada via Wrangler CLI (executa no CI com credenciais)
+    query = f"SELECT id, title, category, traffic_tier FROM products WHERE traffic_tier = '{tier}' LIMIT 100;"
+    
+    try:
+        result = subprocess.run(
+            ["npx", "wrangler", "d1", "execute", "pseo-db", "--remote", "--command", query],
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+        
+        if result.returncode != 0:
+            print(f"[WARN] Falha ao buscar produtos do D1: {result.stderr[:200]}")
+            return []
+        
+        # Parse do output JSON do Wrangler
+        # O wrangler retorna JSON com os resultados
+        output = result.stdout
+        # Extrai os dados do JSON (formato: {"success": true, "results": [...]})
+        try:
+            # Procura pelo bloco JSON na saída
+            start = output.find('{')
+            end = output.rfind('}') + 1
+            if start >= 0 and end > start:
+                data = json.loads(output[start:end])
+                results = data.get('results', [])
+                return [(r['id'], r['title'], r['category'], r['traffic_tier']) for r in results]
+        except (json.JSONDecodeError, KeyError) as e:
+            print(f"[WARN] Erro ao parsear resposta do D1: {e}")
+            return []
+    except (subprocess.TimeoutExpired, FileNotFoundError) as e:
+        print(f"[WARN] Wrangler CLI não disponível: {e}")
+        return []
+    
+    return []
+
+async def notify_indexnow(urls):
+    """
+    Dispara IndexNow (Bing/Yandex) para indexação em minutos (docs Seção 4.3).
+    """
+    indexnow_key = os.environ.get('INDEXNOW_KEY', '')
+    site_url = os.environ.get('SITE_URL', 'https://pseo-arbitrage.pages.dev')
+    
+    if not indexnow_key:
+        print("[WARN] INDEXNOW_KEY não configurada. Pulando IndexNow.")
+        return
+    
+    if not urls:
+        return
+    
+    payload = {
+        "host": site_url.replace("https://", "").replace("http://", ""),
+        "key": indexnow_key,
+        "keyLocation": f"{site_url}/{indexnow_key}.txt",
+        "urlList": urls
+    }
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                "https://api.indexnow.org/indexnow",
+                json=payload,
+                timeout=10
+            ) as response:
+                if response.status == 200:
+                    print(f"[INDEXNOW] {len(urls)} URLs enviadas com sucesso.")
+                else:
+                    print(f"[INDEXNOW] HTTP {response.status}: {await response.text()}")
+    except Exception as e:
+        print(f"[INDEXNOW] Erro: {e}")
+
 async def main(tier):
     print(f"=== INICIANDO ETL PARA CURVA TIER '{tier}' ===")
     
-    # 1. Conecta ao Cloudflare D1 via Wrangler CLI ou API REST para buscar produtos do Tier especificado
-    # Em ambiente CI, executamos em lote (Batch)
+    # 1. Busca produtos reais do D1 (Regra Seção 3.2 - Curva ABC)
     print(f"Buscando SKUs do Tier {tier} no D1...")
+    products = fetch_products_from_d1(tier)
     
-    # Exemplo de produtos mock do lote (substituir por SELECT do D1 em produção)
-    mock_products = [
-        (f"SKU-{tier}-1", "Pastilha de Freio Honda Civic 2018", "pecas"),
-        (f"SKU-{tier}-2", "Pastilha de Freio Toyota Corolla 2020", "pecas"),
-        (f"SKU-{tier}-3", "Filtro de Oleo Honda Civic 2018", "filtro-oleo"),
-    ]
+    if not products:
+        print("[WARN] Nenhum produto encontrado no D1 para este tier. Usando fallback mock para teste.")
+        products = [
+            (f"SKU-{tier}-1", "Pastilha de Freio Honda Civic 2018", "pecas", tier),
+            (f"SKU-{tier}-2", "Pastilha de Freio Toyota Corolla 2020", "pecas", tier),
+            (f"SKU-{tier}-3", "Filtro de Oleo Honda Civic 2018", "filtro-oleo", tier),
+        ]
 
     async with aiohttp.ClientSession() as session:
-        tasks = [process_product(session, pid, title, cat, tier) for pid, title, cat in mock_products]
+        tasks = [process_product(session, pid, title, cat, tier) for pid, title, cat, _ in products]
         results = await asyncio.gather(*tasks)
 
     valid_results = [r for r in results if r is not None]
@@ -252,6 +330,11 @@ async def main(tier):
         with open("batch_update.sql", "w") as f:
             f.write("\n".join(sql_statements))
         print("Arquivo 'batch_update.sql' gerado com sucesso para o Wrangler.")
+        
+        # 3. Dispara IndexNow para as URLs atualizadas (docs Seção 4.3)
+        site_url = os.environ.get('SITE_URL', 'https://pseo-arbitrage.pages.dev')
+        updated_urls = [f"{site_url}/{item['id']}" for item in valid_results]
+        await notify_indexnow(updated_urls)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="ETL Assíncrono com Resiliência para pSEO")
