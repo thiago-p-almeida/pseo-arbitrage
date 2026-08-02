@@ -25,3 +25,6 @@ pnpm-debug.log*
 
 # local backup directory
 .backup/
+
+# wrangler local state (D1, cache, etc)
+.wrangler/
