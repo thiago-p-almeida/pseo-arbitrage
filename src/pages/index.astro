@@ -1,13 +1,28 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import { getFallbackProducts } from '../lib/d1';
+import { withEdgeCache } from '../lib/cache';
 import { env } from 'cloudflare:workers';
 
 const d1 = env.DB;
+const ctx = Astro.locals.cfContext;
 
+// Requisição Fantasma para o Cache SWR do D1 (protege cota — Regra Inquebrável)
+const cacheUrl = new URL('/_d1_cache/products/featured', Astro.request.url);
+const dataRequest = new Request(cacheUrl.toString(), { headers: Astro.request.headers });
+
+const fetchFeaturedProducts = async () => {
+  if (!d1) {
+    return new Response(JSON.stringify([]), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  }
+  const items = await getFallbackProducts(d1, 'pastilha-freio', 6);
+  return new Response(JSON.stringify(items), { status: 200, headers: { 'Content-Type': 'application/json' } });
+};
+
+const cachedRes = await withEdgeCache(dataRequest, fetchFeaturedProducts, ctx);
 let products: any[] = [];
-if (d1) {
-  products = await getFallbackProducts(d1, 'pastilha-freio', 6);
+if (cachedRes.status === 200) {
+  products = await cachedRes.json();
 }
 ---
 
