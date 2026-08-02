@@ -1,0 +1,88 @@
+---
+// src/components/TrackingScript.astro
+// Script first-party de tracking (docs Seção 5.1)
+// Captura PageView, ViewContent e ClickOut_Affiliate e envia para /api/track
+// Zero dependências externas — Vanilla JS puro
+---
+
+<script is:inline>
+  (function () {
+    // Guard para evitar dupla execução
+    if (window.__pseoTrackingLoaded) return;
+    window.__pseoTrackingLoaded = true;
+
+    // Lê cookies fbc/fbp (Meta) para enriquecer o payload
+    function getCookie(name) {
+      const match = document.cookie.match(new RegExp('(^|; )' + name + '=([^;]*)'));
+      return match ? decodeURIComponent(match[2]) : undefined;
+    }
+
+    // Gera um client_id persistente (anonimizado)
+    function getClientId() {
+      let cid = localStorage.getItem('pseo_cid');
+      if (!cid) {
+        cid = 'cid_' + crypto.randomUUID().replace(/-/g, '').slice(0, 16);
+        localStorage.setItem('pseo_cid', cid);
+      }
+      return cid;
+    }
+
+    // Envia evento para o endpoint /api/track (Proxy GTM SS)
+    function track(eventName, extraData) {
+      const payload = {
+        eventName: eventName,
+        eventId: crypto.randomUUID(),
+        url: window.location.href,
+        referrer: document.referrer,
+        fbc: getCookie('_fbc'),
+        fbp: getCookie('_fbp'),
+        clientId: getClientId(),
+        consent: 'denied', // Consent Mode v2 default (será atualizado pelo banner)
+        ...extraData
+      };
+
+      // Disparo assíncrono (não bloqueia a página)
+      if (navigator.sendBeacon) {
+        const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+        navigator.sendBeacon('/api/track', blob);
+      } else {
+        fetch('/api/track', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          keepalive: true
+        });
+      }
+    }
+
+    // PageView (dispara uma vez por carregamento)
+    track('PageView');
+
+    // ViewContent (se houver dados de produto na página)
+    const productData = document.querySelector('[data-product-id]');
+    if (productData) {
+      track('ViewContent', {
+        contentName: productData.getAttribute('data-product-title') || undefined,
+        value: productData.getAttribute('data-product-price') || undefined
+      });
+    }
+
+    // ClickOut_Affiliate (delegação de eventos para links de afiliado)
+    document.addEventListener('click', function (e) {
+      const link = e.target.closest('a[data-affiliate]');
+      if (!link) return;
+
+      track('ClickOut_Affiliate', {
+        subId: link.getAttribute('data-sub-id') || undefined,
+        store: link.getAttribute('data-store') || undefined
+      });
+    }, true);
+
+    // Expõe API global para o banner de consentimento atualizar o estado
+    window.__pseoTrack = {
+      setConsent: function (granted) {
+        track('ConsentUpdate', { consent: granted ? 'granted' : 'denied' });
+      }
+    };
+  })();
+</script>

@@ -1,4 +1,6 @@
 ---
+import TrackingScript from '../components/TrackingScript.astro';
+
 interface Props {
   title: string;
   description: string;
@@ -54,5 +56,8 @@ const currentUrl = canonicalUrl || Astro.url.href;
         <p>&copy; {new Date().getFullYear()} AutoParts & Tech. Todos os direitos reservados.</p>
       </div>
     </footer>
+
+    <!-- Tracking First-Party (Proxy GTM SS) -->
+    <TrackingScript />
   </body>
 </html>
