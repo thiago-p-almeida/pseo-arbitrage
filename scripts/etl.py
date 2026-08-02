@@ -8,6 +8,7 @@ import sys
 import hashlib
 import hmac
 from datetime import datetime, timezone
+from urllib.parse import quote
 
 # Configurações de Resiliência (Exponential Backoff + Jitter)
 INITIAL_DELAY = 1.0  # 1 segundo inicial
@@ -151,6 +152,31 @@ async def fetch_amazon_offers(session, keywords, partner_tag=AMAZON_PARTNER_TAG)
 
     return None
 
+# --- Mercado Livre API Client (pública, sem autenticação) ---
+
+async def fetch_meli_offers(session, keywords):
+    """
+    Busca ofertas no Mercado Livre API (pública, sem autenticação).
+    Retorna dict com 'price' e 'url' ou None em caso de falha.
+    """
+    encoded_keywords = quote(keywords)
+    url = f"https://api.mercadolivre.com.br/sites/MLB/search?q={encoded_keywords}&limit=1"
+
+    data = await fetch_with_backoff(session, url)
+
+    if data:
+        results = data.get('results', [])
+        if results:
+            item = results[0]
+            price = item.get('price')
+            permalink = item.get('permalink', '')
+            # Add aff_sub for tracking
+            if permalink and 'aff_sub' not in permalink:
+                separator = '&' if '?' in permalink else '?'
+                permalink = f"{permalink}{separator}aff_sub=pseo-arbitrage"
+            return {'price': price, 'url': permalink}
+    return None
+
 async def process_product(session, product_id, title, category, tier):
     """
     Busca ofertas reais na Amazon PAAPI e monta o lote para atualização no D1.
@@ -166,9 +192,16 @@ async def process_product(session, product_id, title, category, tier):
         amazon_price = round(random.uniform(50.0, 500.0), 2)
         amazon_url = f"https://amazon.com.br/dp/{product_id}?tag={AMAZON_PARTNER_TAG}&ascsubtag=pseo-arbitrage"
 
-    # ML oferta (mock até Micro-Task 7)
-    meli_price = amazon_price * 1.05
-    meli_url = f"https://mercadolivre.com.br/p/{product_id}"
+    # Busca ofertas no Mercado Livre API
+    meli_data = await fetch_meli_offers(session, title)
+
+    if meli_data:
+        meli_price = meli_data['price']
+        meli_url = meli_data['url']
+    else:
+        # Fallback: preço derivado do Amazon + URL mock
+        meli_price = amazon_price * 1.05
+        meli_url = f"https://mercadolivre.com.br/p/{product_id}"
 
     offers = [
         {"store": "Amazon", "price": amazon_price, "url": amazon_url},
