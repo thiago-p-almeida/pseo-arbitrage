@@ -14,11 +14,12 @@ const cacheUrl = new URL('/_d1_cache/products/featured', Astro.request.url);
 const dataRequest = new Request(cacheUrl.toString(), { headers: Astro.request.headers });
 
 const fetchFeaturedProducts = async () => {
-  if (!d1) {
-    return new Response(JSON.stringify([]), { status: 200, headers: { 'Content-Type': 'application/json' } });
-  }
+  // getFallbackProducts já possui try...catch e Mocks para SSG
   const items = await getFallbackProducts(d1, 'pastilha-freio', 6);
-  return new Response(JSON.stringify(items), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  return new Response(JSON.stringify(items), { 
+    status: 200, 
+    headers: { 'Content-Type': 'application/json' } 
+  });
 };
 
 const cachedRes = await withEdgeCache(dataRequest, fetchFeaturedProducts, ctx);
