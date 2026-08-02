@@ -1,4 +1,6 @@
 ---
+export const prerender = true; // SSG: Home page pré-renderizada para zero custo
+
 import Layout from '../layouts/Layout.astro';
 import { getFallbackProducts } from '../lib/d1';
 import { withEdgeCache } from '../lib/cache';
