@@ -5,11 +5,22 @@ import random
 import json
 import argparse
 import sys
+import hashlib
+import hmac
+from datetime import datetime, timezone
 
 # Configurações de Resiliência (Exponential Backoff + Jitter)
 INITIAL_DELAY = 1.0  # 1 segundo inicial
 MAX_RETRIES = 4
 BASE_BACKOFF = 2.0
+
+# Configurações Amazon PAAPI v10
+AMAZON_ACCESS_KEY = os.environ.get('AMAZON_ACCESS_KEY', '')
+AMAZON_SECRET_KEY = os.environ.get('AMAZON_SECRET_KEY', '')
+AMAZON_PARTNER_TAG = os.environ.get('AMAZON_PARTNER_TAG', 'meusite-20')
+AMAZON_MARKETPLACE = os.environ.get('AMAZON_MARKETPLACE', 'www.amazon.com.br')
+AMAZON_REGION = os.environ.get('AMAZON_REGION', 'us-east-1')
+AMAZON_PAAPI_ENDPOINT = 'https://webservices.amazon.com/paapi5/searchitems'
 
 async def fetch_with_backoff(session, url, headers=None):
     """
@@ -37,29 +48,141 @@ async def fetch_with_backoff(session, url, headers=None):
 
     return None
 
-async def process_product(session, product_id, category, tier):
-    """
-    Simula a atualização de preços e ofertas para um produto individual
-    """
-    # Exemplo mock de chamada para API de Afiliados (Amazon/ML)
-    fake_url = f"https://httpbin.org/json" 
-    data = await fetch_with_backoff(session, fake_url)
+# --- Amazon PAAPI v10 Client (AWS Signature V4) ---
 
-    if data:
-        # Lógica de montagem das ofertas e atualização no D1
-        lowest_price = round(random.uniform(50.0, 500.0), 2)
-        offers = [
-            {"store": "Amazon", "price": lowest_price, "url": f"https://amazon.com.br/dp/{product_id}?tag=meusite-20"},
-            {"store": "Mercado Livre", "price": lowest_price * 1.05, "url": f"https://mercadolivre.com.br/p/{product_id}"}
+def _sign(key, msg):
+    """Assina uma mensagem com HMAC-SHA256."""
+    return hmac.new(key, msg.encode('utf-8'), hashlib.sha256).digest()
+
+def _get_signature_key(key, date_stamp, region, service):
+    """Deriva a chave de assinatura AWS Signature V4."""
+    kDate = _sign(('AWS4' + key).encode('utf-8'), date_stamp)
+    kRegion = _sign(kDate, region)
+    kService = _sign(kRegion, service)
+    kSigning = _sign(kService, 'aws4_request')
+    return kSigning
+
+async def fetch_amazon_offers(session, keywords, partner_tag=AMAZON_PARTNER_TAG):
+    """
+    Busca ofertas na Amazon PAAPI v10 usando SearchItems.
+    Implementa AWS Signature V4 para autenticação.
+    Retorna dict com 'price' e 'url' ou None em caso de falha.
+    """
+    if not AMAZON_ACCESS_KEY or not AMAZON_SECRET_KEY:
+        print("[WARN] Credenciais da Amazon PAAPI não configuradas. Usando fallback.")
+        return None
+
+    t = datetime.now(timezone.utc)
+    amz_date = t.strftime('%Y%m%dT%H%M%SZ')
+    date_stamp = t.strftime('%Y%m%d')
+
+    body = json.dumps({
+        "Keywords": keywords,
+        "Marketplace": AMAZON_MARKETPLACE,
+        "PartnerTag": partner_tag,
+        "PartnerType": "Associates",
+        "Resources": [
+            "ItemInfo.Title",
+            "Offers.Listings.Price",
+            "DetailPageURL"
         ]
-        
-        return {
-            "id": product_id,
-            "lowest_price": lowest_price,
-            "offers_json": json.dumps(offers),
-            "traffic_tier": tier
-        }
+    })
+
+    service = 'ProductAdvertisingAPI'
+    host = 'webservices.amazon.com'
+    content_type = 'application/json'
+
+    # Canonical request
+    canonical_uri = '/paapi5/searchitems'
+    canonical_querystring = ''
+    canonical_headers = f'content-type:{content_type}\nhost:{host}\nx-amz-date:{amz_date}\n'
+    signed_headers = 'content-type;host;x-amz-date'
+    payload_hash = hashlib.sha256(body.encode('utf-8')).hexdigest()
+    canonical_request = f'POST\n{canonical_uri}\n{canonical_querystring}\n{canonical_headers}\n{signed_headers}\n{payload_hash}'
+
+    # String to sign
+    credential_scope = f'{date_stamp}/{AMAZON_REGION}/{service}/aws4_request'
+    string_to_sign = f'AWS4-HMAC-SHA256\n{amz_date}\n{credential_scope}\n{hashlib.sha256(canonical_request.encode("utf-8")).hexdigest()}'
+
+    # Signature
+    signing_key = _get_signature_key(AMAZON_SECRET_KEY, date_stamp, AMAZON_REGION, service)
+    signature = hmac.new(signing_key, string_to_sign.encode('utf-8'), hashlib.sha256).hexdigest()
+
+    # Authorization header
+    authorization_header = f'AWS4-HMAC-SHA256 Credential={AMAZON_ACCESS_KEY}/{credential_scope}, SignedHeaders={signed_headers}, Signature={signature}'
+
+    headers = {
+        'Content-Type': content_type,
+        'Host': host,
+        'X-Amz-Date': amz_date,
+        'Authorization': authorization_header
+    }
+
+    # Retry logic with exponential backoff + jitter
+    delay = INITIAL_DELAY
+    for attempt in range(MAX_RETRIES):
+        try:
+            async with session.post(AMAZON_PAAPI_ENDPOINT, data=body.encode('utf-8'), headers=headers, timeout=10) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    items = data.get('SearchResult', {}).get('Items', [])
+                    if items:
+                        item = items[0]
+                        url = item.get('DetailPageURL', '')
+                        # Add ascsubtag for tracking
+                        if url and 'ascsubtag' not in url:
+                            separator = '&' if '?' in url else '?'
+                            url = f"{url}{separator}ascsubtag=pseo-arbitrage"
+                        price_info = item.get('Offers', {}).get('Listings', [{}])[0].get('Price', {})
+                        price = price_info.get('Amount')
+                        return {'price': price, 'url': url}
+                    return None
+                elif response.status == 429:
+                    print(f"[RATE LIMIT] 429 na Amazon PAAPI. Tentativa {attempt + 1}/{MAX_RETRIES}")
+                else:
+                    print(f"[HTTP {response.status}] na Amazon PAAPI")
+        except Exception as e:
+            print(f"[ERRO] {e} na tentativa {attempt + 1}/{MAX_RETRIES}")
+
+        jitter = random.uniform(0.0, 0.5)
+        sleep_time = (delay * (BASE_BACKOFF ** attempt)) + jitter
+        print(f"Aguardando {sleep_time:.2f}s antes da próxima tentativa...")
+        await asyncio.sleep(sleep_time)
+
     return None
+
+async def process_product(session, product_id, title, category, tier):
+    """
+    Busca ofertas reais na Amazon PAAPI e monta o lote para atualização no D1.
+    """
+    # Busca ofertas na Amazon PAAPI usando o título do produto como keyword
+    amazon_data = await fetch_amazon_offers(session, title)
+
+    if amazon_data:
+        amazon_price = amazon_data['price']
+        amazon_url = amazon_data['url']
+    else:
+        # Fallback: gera preço aleatório e URL mock
+        amazon_price = round(random.uniform(50.0, 500.0), 2)
+        amazon_url = f"https://amazon.com.br/dp/{product_id}?tag={AMAZON_PARTNER_TAG}&ascsubtag=pseo-arbitrage"
+
+    # ML oferta (mock até Micro-Task 7)
+    meli_price = amazon_price * 1.05
+    meli_url = f"https://mercadolivre.com.br/p/{product_id}"
+
+    offers = [
+        {"store": "Amazon", "price": amazon_price, "url": amazon_url},
+        {"store": "Mercado Livre", "price": meli_price, "url": meli_url}
+    ]
+
+    lowest_price = min(amazon_price, meli_price)
+
+    return {
+        "id": product_id,
+        "lowest_price": lowest_price,
+        "offers_json": json.dumps(offers),
+        "traffic_tier": tier
+    }
 
 async def main(tier):
     print(f"=== INICIANDO ETL PARA CURVA TIER '{tier}' ===")
@@ -68,11 +191,15 @@ async def main(tier):
     # Em ambiente CI, executamos em lote (Batch)
     print(f"Buscando SKUs do Tier {tier} no D1...")
     
-    # Exemplo de produtos mock do lote
-    mock_skus = [f"SKU-{tier}-{i}" for i in range(1, 11)]
+    # Exemplo de produtos mock do lote (substituir por SELECT do D1 em produção)
+    mock_products = [
+        (f"SKU-{tier}-1", "Pastilha de Freio Honda Civic 2018", "pecas"),
+        (f"SKU-{tier}-2", "Pastilha de Freio Toyota Corolla 2020", "pecas"),
+        (f"SKU-{tier}-3", "Filtro de Oleo Honda Civic 2018", "filtro-oleo"),
+    ]
 
     async with aiohttp.ClientSession() as session:
-        tasks = [process_product(session, sku, "pecas", tier) for sku in mock_skus]
+        tasks = [process_product(session, pid, title, cat, tier) for pid, title, cat in mock_products]
         results = await asyncio.gather(*tasks)
 
     valid_results = [r for r in results if r is not None]
