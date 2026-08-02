@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS products (
     slug TEXT UNIQUE NOT NULL,
     category TEXT NOT NULL,
     title TEXT NOT NULL,
+    description TEXT,
     ean_upc TEXT,
     oem_code TEXT,
     specs_json TEXT,

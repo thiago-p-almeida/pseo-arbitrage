@@ -45,7 +45,20 @@ if (cachedRes.status === 404) {
 
 const product = await cachedRes.json();
 
-// 5. Lógica de Arbitragem: Captura o Click ID e gera o Sub-ID Criptografado
+// 5. Mapeia campos do schema D1 para o template (Edge-First: Web APIs puras)
+//    title → name, lowest_price → price, specs_json → specs_html, offers_json → amazon_url/meli_url
+const offers = product.offers_json ? JSON.parse(product.offers_json) : [];
+const amazonOffer = offers.find((o: any) => o.store === 'Amazon');
+const meliOffer = offers.find((o: any) => o.store === 'Mercado Livre');
+const amazonUrl = amazonOffer?.url || "https://www.amazon.com.br/dp/B000000000";
+const meliUrl = meliOffer?.url || "https://produto.mercadolivre.com.br/MLB-000000000-produto";
+
+const specs = product.specs_json ? JSON.parse(product.specs_json) : {};
+const specsHtml = Object.entries(specs)
+  .map(([key, value]) => `<strong>${key}:</strong> ${value}`)
+  .join('<br>') || '<p>Especificações não disponíveis.</p>';
+
+// 6. Lógica de Arbitragem: Captura o Click ID e gera o Sub-ID Criptografado
 const url = new URL(Astro.request.url);
 const fbclid = url.searchParams.get('fbclid');
 const gclid = url.searchParams.get('gclid');
@@ -56,20 +69,16 @@ const source = fbclid ? 'meta' : gclid ? 'google' : 'unknown';
 
 // Gera o Sub-ID Stateless (Custo Zero de DB)
 const subId = await generateStatelessSubId(clickId, source, env.SECRET_KEY);
-
-// Fallbacks de links de afiliado (na prática, viriam do banco de dados)
-const amazonUrl = product.amazon_url || "https://www.amazon.com.br/dp/B000000000";
-const meliUrl = product.meli_url || "https://produto.mercadolivre.com.br/MLB-000000000-produto";
 ---
 
-<Layout title={`${product.name} - Análise e Melhor Preço`} description={product.description}>
+<Layout title={`${product.title} - Análise e Melhor Preço`} description={product.description}>
   <main class="max-w-4xl mx-auto px-4 py-8">
     
     <!-- Breadcrumb pSEO -->
     <nav class="text-sm text-gray-500 mb-6">
       <a href="/" class="hover:text-blue-600">Início</a> &gt; 
       <span class="capitalize">{product.category || 'Categoria'}</span> &gt; 
-      <span class="text-gray-900 font-medium">{product.name}</span>
+      <span class="text-gray-900 font-medium">{product.title}</span>
     </nav>
 
     <article class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -77,7 +86,7 @@ const meliUrl = product.meli_url || "https://produto.mercadolivre.com.br/MLB-000
       <!-- Cabeçalho do Produto -->
       <div class="p-6 sm:p-10 border-b border-gray-100">
         <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight mb-4">
-          {product.name}
+          {product.title}
         </h1>
         <p class="text-lg text-gray-600 leading-relaxed">
           {product.description}
@@ -98,7 +107,7 @@ const meliUrl = product.meli_url || "https://produto.mercadolivre.com.br/MLB-000
             storeName="Amazon" 
             baseUrl={amazonUrl} 
             subId={subId} 
-            price={product.price ? `R$ ${product.price}` : undefined}
+            price={product.lowest_price ? `R$ ${product.lowest_price}` : undefined}
           />
           
           <AffiliateCTA 
@@ -115,7 +124,7 @@ const meliUrl = product.meli_url || "https://produto.mercadolivre.com.br/MLB-000
       <!-- Conteúdo Long-Form para SEO (Especificações, Reviews, etc) -->
       <div class="p-6 sm:p-10 border-t border-gray-100 prose prose-blue max-w-none">
         <h3>Especificações Técnicas</h3>
-        <div class="bg-gray-50 rounded-lg p-4 text-sm text-gray-700" set:html={product.specs_html || '<p>Especificações não disponíveis.</p>'} />
+        <div class="bg-gray-50 rounded-lg p-4 text-sm text-gray-700" set:html={specsHtml} />
       </div>
 
       <!-- Bloco de Anúncio Rodapé (Lazy Load) -->
