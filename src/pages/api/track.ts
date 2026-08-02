@@ -1,6 +1,7 @@
 export const prerender = false; // Executa como Serverless Worker no Edge
 
 import type { APIRoute } from 'astro';
+import { env } from 'cloudflare:workers';
 
 /**
  * Função de Hashing SHA-256 nativa do Edge via Web Crypto API (Regra Seção 5.2)
@@ -118,10 +119,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
     url: request.url
   };
 
-  // Extrai o contexto do Worker (Pages Functions / Workers)
-  const runtime = (locals as any).runtime;
-  const env = runtime?.env || {};
-  const ctx = runtime?.ctx;
+  // Extrai o contexto do Worker (nova API Astro v6+ / @astrojs/cloudflare v14)
+  const ctx = locals.cfContext;
 
   // DISPARO 100% ASSÍNCRONO VIA ctx.waitUntil (Regra Crítica Seção 5.2)
   // O Worker NÃO aguarda a resposta das APIs externas para responder ao cliente.
