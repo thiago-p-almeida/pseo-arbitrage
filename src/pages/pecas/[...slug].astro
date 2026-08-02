@@ -1,0 +1,233 @@
+---
+// src/pages/pecas/[...slug].astro
+// Rota pSEO hierárquica: /pecas/[montadora]/[modelo]/[ano]
+export const prerender = false; // SSR Híbrido
+
+import Layout from '../../layouts/Layout.astro';
+import AdBlock from '../../components/AdBlock.astro';
+import AffiliateCTA from '../../components/AffiliateCTA.astro';
+import { withEdgeCache } from '../../lib/cache';
+import { generateStatelessSubId } from '../../lib/subid';
+import { getProductCompatibilities, getFallbackProducts } from '../../lib/d1';
+import { env } from 'cloudflare:workers';
+
+const { slug } = Astro.params;
+
+// Slug hierárquico: [montadora]/[modelo]/[ano]
+const slugParts = (slug || '').split('/');
+const lastSegment = slugParts[slugParts.length - 1] || '';
+const year = slugParts.length >= 3 ? parseInt(slugParts[2], 10) : undefined;
+
+// 1. Extrai variáveis de ambiente e contexto do Cloudflare
+const db = env.DB;
+const ctx = Astro.locals.cfContext;
+
+// 2. Requisição Fantasma para o Cache SWR
+const cacheUrl = new URL(`/_d1_cache/pecas/${slug}`, Astro.request.url);
+const dataRequest = new Request(cacheUrl.toString(), { headers: Astro.request.headers });
+
+// 3. Função Fallback: Busca no D1 por slug completo ou peça universal similar
+const fetchProductFromD1 = async () => {
+  // Tenta encontrar pela slug completa primeiro
+  let stmt = db.prepare('SELECT * FROM products WHERE category != ? AND slug = ?').bind('eletronicos', slug);
+  let product = await stmt.first();
+
+  // Fallback: busca pelo identificador final (código OEM/peça)
+  if (!product) {
+    stmt = db.prepare('SELECT * FROM products WHERE slug LIKE ? LIMIT 1').bind(`%${lastSegment}%`);
+    product = await stmt.first();
+  }
+
+  if (!product) {
+    return new Response(JSON.stringify({ error: 'Not found' }), { status: 404 });
+  }
+
+  return new Response(JSON.stringify(product), { 
+    status: 200,
+    headers: { 'Content-Type': 'application/json' }
+  });
+};
+
+// 4. Executa a busca protegida pelo Cache SWR
+const cachedRes = await withEdgeCache(dataRequest, fetchProductFromD1, ctx);
+
+if (cachedRes.status === 404) {
+  // Prevenção de Thin Content: retorna 200 com sugestões em vez de 404 (docs Seção 4.1)
+  // Requisição Fantasma separada para fallback
+  const fbCacheUrl = new URL('/_d1_cache/pecas/fallback', Astro.request.url);
+  const fbRequest = new Request(fbCacheUrl.toString(), { headers: Astro.request.headers });
+  
+  const fetchFallback = async () => {
+    const fallbacks = await getFallbackProducts(db, 'pastilha-freio', 4);
+    return new Response(JSON.stringify(fallbacks), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  };
+
+  const fbRes = await withEdgeCache(fbRequest, fetchFallback, ctx);
+  const fallbackProducts = fbRes.status === 200 ? await fbRes.json() : [];
+  
+  return Astro.redirect(`/pecas/${fallbackProducts[0]?.slug || 'nao-encontrado'}`);
+}
+
+const product = await cachedRes.json();
+
+// 5. Mapeia ofertas do schema
+const offers = product.offers_json ? JSON.parse(product.offers_json) : [];
+const amazonOffer = offers.find((o: any) => o.store === 'Amazon');
+const meliOffer = offers.find((o: any) => o.store === 'Mercado Livre');
+const amazonUrl = amazonOffer?.url || "https://www.amazon.com.br/dp/B000000000";
+const meliUrl = meliOffer?.url || "https://produto.mercadolivre.com.br/MLB-000000000-produto";
+
+const specs = product.specs_json ? JSON.parse(product.specs_json) : {};
+const specsHtml = Object.entries(specs)
+  .map(([key, value]) => `<strong>${key}:</strong> ${value}`)
+  .join('<br>') || '<p>Especificações não disponíveis.</p>';
+
+// 5.1 Busca compatibilidades automotivas (tabela N:N) com proteção SWR (Regra Inquebrável)
+const compatibilities = product.id ? await (async () => {
+  const compatCacheUrl = new URL(`/_d1_cache/pecas/${product.id}/compat`, Astro.request.url);
+  const compatRequest = new Request(compatCacheUrl.toString(), { headers: Astro.request.headers });
+
+  const fetchCompatFromD1 = async () => {
+    const items = await getProductCompatibilities(db, product.id!);
+    return new Response(JSON.stringify(items), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  };
+
+  const compatRes = await withEdgeCache(compatRequest, fetchCompatFromD1, ctx);
+  return compatRes.status === 200 ? await compatRes.json() : [];
+})() : [];
+
+// 6. Lógica de Arbitragem: Sub-ID Stateless
+const url = new URL(Astro.request.url);
+const fbclid = url.searchParams.get('fbclid');
+const gclid = url.searchParams.get('gclid');
+const clickId = fbclid || gclid || `org_${crypto.randomUUID().split('-')[0]}`;
+const source = fbclid ? 'meta' : gclid ? 'google' : 'unknown';
+const secretKey = env.SECRET_KEY || 'dev-secret-key-nao-usar-em-producao';
+const subId = await generateStatelessSubId(clickId, source, secretKey);
+
+// 7. JSON-LD Schema com Vehicle (docs Seção 4.2)
+const prices = offers.map((o: any) => Number(o.price)).filter((p: number) => !isNaN(p));
+const lowPrice = prices.length ? Math.min(...prices) : product.lowest_price;
+const highPrice = prices.length ? Math.max(...prices) : product.lowest_price;
+
+const jsonLdSchema = {
+  "@context": "https://schema.org/",
+  "@type": "Product",
+  "name": product.title,
+  "description": product.description,
+  "mpn": product.oem_code || product.ean_upc || undefined,
+  "brand": { "@type": "Brand", "name": "OEM" },
+  "offers": {
+    "@type": "AggregateOffer",
+    "url": Astro.url.href,
+    "priceCurrency": "BRL",
+    "lowPrice": lowPrice,
+    "highPrice": highPrice,
+    "offerCount": offers.length,
+    "availability": "https://schema.org/InStock"
+  },
+  "isAccessoryOrSparePartFor": compatibilities.length ? compatibilities.map((c: any) => ({
+    "@type": "Vehicle",
+    "brand": c.make,
+    "model": c.model,
+    "vehicleModelDate": c.year_start ? String(c.year_start) : undefined
+  })) : undefined
+};
+---
+
+<Layout 
+  title={`${product.title} - Compatibilidade e Melhor Preço`} 
+  description={product.description}
+  jsonLdSchema={jsonLdSchema}
+>
+  <main class="max-w-4xl mx-auto px-4 py-8">
+    
+    <!-- Breadcrumb pSEO -->
+    <nav class="text-sm text-gray-500 mb-6">
+      <a href="/" class="hover:text-blue-600">Início</a> > 
+      <a href="/" class="hover:text-blue-600">Peças</a> > 
+      <span class="text-gray-900 font-medium">{product.title}</span>
+    </nav>
+
+    <article class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      
+      <!-- Cabeçalho do Produto -->
+      <div class="p-6 sm:p-10 border-b border-gray-100">
+        <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight mb-4">
+          {product.title}
+        </h1>
+        <p class="text-lg text-gray-600 leading-relaxed">
+          {product.description}
+        </p>
+        {product.oem_code && (
+          <p class="mt-3 text-sm text-gray-500">
+            <strong>Código OEM:</strong> {product.oem_code}
+          </p>
+        )}
+      </div>
+
+      <!-- Bloco de Anúncio Topo (Lazy Load) -->
+      <div class="p-6 bg-gray-50/50">
+        <AdBlock adSlot="1234567890" className="w-full h-[100px] sm:h-[250px] bg-gray-100 rounded-xl flex items-center justify-center" />
+      </div>
+
+      <!-- Matriz de Compatibilidade (se houver) -->
+      {compatibilities.length > 0 && (
+        <div class="p-6 sm:p-10 border-b border-gray-100">
+          <h2 class="text-lg font-bold text-gray-900 mb-4">Veículos Compatíveis</h2>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {compatibilities.map((c: any) => (
+              <div class="bg-blue-50 rounded-lg p-3 text-sm text-blue-900 border border-blue-100">
+                <strong class="capitalize">{c.make}</strong> {c.model} 
+                {c.year_start && c.year_end && <span>({c.year_start}-{c.year_end})</span>}
+                {c.year_start && !c.year_end && <span>({c.year_start}+)</span>}
+                {c.engine && <span class="block text-xs text-blue-700 mt-1">Motor: {c.engine}</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <!-- Área de Conversão -->
+      <div class="p-6 sm:p-10 bg-white">
+        <h2 class="text-xl font-bold text-gray-900 mb-6 text-center">Onde comprar com o melhor preço?</h2>
+        
+        <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+          <AffiliateCTA 
+            storeName="Amazon" 
+            baseUrl={amazonUrl} 
+            subId={subId} 
+            price={product.lowest_price ? `R$ ${product.lowest_price}` : undefined}
+          />
+          
+          <AffiliateCTA 
+            storeName="Mercado Livre" 
+            baseUrl={meliUrl} 
+            subId={subId} 
+          />
+        </div>
+        <p class="text-xs text-center text-gray-400 mt-4">
+          * Comprando pelos links acima, podemos receber uma comissão sem custo adicional para você.
+        </p>
+      </div>
+
+      <!-- Especificações Técnicas -->
+      <div class="p-6 sm:p-10 border-t border-gray-100 prose prose-blue max-w-none">
+        <h3>Especificações Técnicas</h3>
+        <div class="bg-gray-50 rounded-lg p-4 text-sm text-gray-700" set:html={specsHtml} />
+      </div>
+
+      <!-- Bloco de Anúncio Rodapé -->
+      <div class="p-6 border-t border-gray-100">
+        <AdBlock adSlot="0987654321" className="w-full h-[250px] bg-gray-100 rounded-xl flex items-center justify-center" />
+      </div>
+
+    </article>
+  </main>
+</Layout>
