@@ -314,12 +314,8 @@ async def main(tier):
     products = fetch_products_from_d1(tier)
     
     if not products:
-        print("[WARN] Nenhum produto encontrado no D1 para este tier. Usando fallback mock para teste.")
-        products = [
-            (f"SKU-{tier}-1", "Pastilha de Freio Honda Civic 2018", "pecas", tier),
-            (f"SKU-{tier}-2", "Pastilha de Freio Toyota Corolla 2020", "pecas", tier),
-            (f"SKU-{tier}-3", "Filtro de Oleo Honda Civic 2018", "filtro-oleo", tier),
-        ]
+        print("[WARN] Nenhum produto encontrado. Encerrando ETL.")
+        return
 
     async with aiohttp.ClientSession() as session:
         tasks = [process_product(session, pid, title, cat, tier) for pid, title, cat, _ in products]
