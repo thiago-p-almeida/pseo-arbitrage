@@ -42,5 +42,5 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           wranglerVersion: '4.115.0'
-          # Passamos o ponto de entrada diretamente para o Wrangler aqui!
-          command: deploy dist/server/entry.mjs
+          # Aponta diretamente para o arquivo gerado pelo build do Astro
+          command: deploy --config dist/server/wrangler.json

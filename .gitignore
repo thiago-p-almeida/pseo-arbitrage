@@ -31,3 +31,4 @@ pnpm-debug.log*
 
 # ETL batch update file (contém dados de catálogo, não deve ser commitado)
 batch_update.sql
+.wrangler/
