@@ -1,35 +1,17 @@
 name = "pseo-arbitrage"
 compatibility_date = "2025-06-01"
+main = "dist/server/entry.mjs"
 
 # Binding do Banco de Dados Cloudflare D1
-[D1_DATABASES]
-pseo-db = { binding = "DB", database_name = "pseo-db", database_id = "b86660ea-2b4b-487a-abc6-2415f17d8822" }
+[[d1_databases]]
+binding = "DB"
+database_name = "pseo-db"
+database_id = "b86660ea-2b4b-487a-abc6-2415f17d8822"
 
-# Variáveis de Ambiente — PRODUÇÃO
-# ⚠️ Preencha os valores reais antes do deploy.
-#   Nunca coloque secrets diretamente aqui; use wrangler secret put.
+# Variáveis de Ambiente Públicas
+# (As chaves secretas e tokens estão configuradas com segurança diretamente no painel da Cloudflare)
 [vars]
-# --- Ambiente ---
 SITE_URL = "https://pseo-arbitrage.pages.dev"
-INDEXNOW_KEY = ""          # Gere em indexnow.org > key management
 DEBUG_MODE = "false"
-
-# --- ETL / Afiliados ---
-AMAZON_ACCESS_KEY = ""     # Amazon PAAPI v5 Access Key
-AMAZON_SECRET_KEY = ""     # Amazon PAAPI v5 Secret Key
-AMAZON_PARTNER_TAG = ""    # Amazon affiliate tag (ex: meusite-20)
 AMAZON_MARKETPLACE = "www.amazon.com.br"
 AMAZON_REGION = "us-east-1"
-
-# --- Anúncios ---
-ADSENSE_CLIENT_ID = ""     # ca-pub-XXXXXXXXXXXXXXXX
-ADSENSE_SLOT_TOP = ""
-ADSENSE_SLOT_BOTTOM = ""
-GOOGLE_ADS_ID = ""         # Google Ads Server-Side tracking ID (G-XXXXXXX)
-
-# --- Meta CAPI ---
-META_PIXEL_ID = ""         # ID do pixel do Facebook
-META_CAPI_TOKEN = ""       # Token do Conversions API
-
-# --- Segurança (use `wrangler secret put SECRET_KEY` para este valor) ---
-# SECRET_KEY NÃO DEFINIDO AQUI — use wrangler secret put SECRET_KEY+
