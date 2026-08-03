@@ -42,6 +42,5 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           wranglerVersion: '4.115.0'
-          # Na v14 do @astrojs/cloudflare, o build gera dist/server/wrangler.json
-          # com o entry do Worker. Deploy deve apontar para esse config.
-          command: deploy --config dist/server/wrangler.json
+          # Passamos o ponto de entrada diretamente para o Wrangler aqui!
+          command: deploy dist/server/entry.mjs

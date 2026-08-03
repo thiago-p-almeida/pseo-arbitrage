@@ -1,6 +1,5 @@
 name = "pseo-arbitrage"
 compatibility_date = "2025-06-01"
-main = "dist/server/entry.mjs"
 
 # Binding do Banco de Dados Cloudflare D1
 [[d1_databases]]
