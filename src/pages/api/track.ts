@@ -41,7 +41,7 @@ async function sendToMetaCAPI(payload: any, env: any) {
         event_source_url: payload.url,
         action_source: 'website',
         user_data: {
-          client_ip_address: clientIp, // Meta aceita IP direto em ambiente seguro SS
+          client_ip_address: hashedIp, // LGPD: IP hasheado SHA-256 no Edge
           client_user_agent: userAgent,
           fbc: payload.fbc,
           fbp: payload.fbp

@@ -69,9 +69,28 @@ ${urls}
     });
   }
 
-  // Caso contrário, gera o Sitemap Index com fragmentos por categoria
-  // Categorias conhecidas (expansível conforme catálogo cresce)
-  const categories = ['pastilha-freio', 'filtro-oleo', 'eletronicos'];
+  // Caso contrário, gera o Sitemap Index dinâmico com todas as categorias do D1
+  // Proteção: Cache SWR para evitar consulta direta ao D1 em cada request
+  const cacheUrl2 = new URL('/_d1_cache/sitemap_categories', request.url);
+  const catRequest = new Request(cacheUrl2.toString(), { headers: request.headers });
+
+  const fetchCategoriesFromD1 = async () => {
+    if (!db) {
+      // Fallback mínimo para dev local
+      return new Response(JSON.stringify(['pastilha-freio', 'filtro-oleo', 'eletronicos']), {
+        status: 200, headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    const stmt = db.prepare('SELECT DISTINCT category FROM products LIMIT 100');
+    const result = await stmt.all();
+    const categories = (result.results || []).map((r: any) => r.category);
+    return new Response(JSON.stringify(categories), {
+      status: 200, headers: { 'Content-Type': 'application/json' }
+    });
+  };
+
+  const catCached = await withEdgeCache(catRequest, fetchCategoriesFromD1, ctx);
+  const categories: string[] = catCached.status === 200 ? await catCached.json() : [];
 
   const sitemaps = categories.map(cat =>
     `  <sitemap>\n    <loc>${siteUrl}/sitemap.xml?category=${encodeURIComponent(cat)}</loc>\n  </sitemap>`

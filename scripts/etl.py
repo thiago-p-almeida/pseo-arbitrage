@@ -180,36 +180,43 @@ async def fetch_meli_offers(session, keywords):
 
 async def process_product(session, product_id, title, category, tier):
     """
-    Busca ofertas reais na Amazon PAAPI e monta o lote para atualização no D1.
+    Busca ofertas reais na Amazon PAAPI e Mercado Livre.
+    Se ambas falharem, retorna None para não poluir o D1 com dados mock.
     """
     # Busca ofertas na Amazon PAAPI usando o título do produto como keyword
     amazon_data = await fetch_amazon_offers(session, title)
-
+    
     if amazon_data:
         amazon_price = amazon_data['price']
         amazon_url = amazon_data['url']
     else:
-        # Fallback: gera preço aleatório e URL mock
-        amazon_price = round(random.uniform(50.0, 500.0), 2)
-        amazon_url = f"https://amazon.com.br/dp/{product_id}?tag={AMAZON_PARTNER_TAG}&ascsubtag=pseo-arbitrage"
+        amazon_price = None
+        amazon_url = None
 
     # Busca ofertas no Mercado Livre API
     meli_data = await fetch_meli_offers(session, title)
-
+    
     if meli_data:
         meli_price = meli_data['price']
         meli_url = meli_data['url']
     else:
-        # Fallback: preço derivado do Amazon + URL mock
-        meli_price = amazon_price * 1.05
-        meli_url = f"https://mercadolivre.com.br/p/{product_id}"
+        meli_price = None
+        meli_url = None
 
+    # Se ambas APIs falharam, pula o produto — não grava dados fake no D1
+    if not amazon_data and not meli_data:
+        print(f"[SKIP] {product_id}: Sem ofertas disponíveis (PAAPI + Meli). Produto ignorado.")
+        return None
+
+    # Se pelo menos uma oferta existe, preenche a que faltar com None
     offers = [
         {"store": "Amazon", "price": amazon_price, "url": amazon_url},
         {"store": "Mercado Livre", "price": meli_price, "url": meli_url}
     ]
 
-    lowest_price = min(amazon_price, meli_price)
+    lowest_price = min(
+        p for p in [amazon_price, meli_price] if p is not None
+    )
 
     return {
         "id": product_id,
@@ -223,7 +230,12 @@ def fetch_products_from_d1(tier):
     Busca produtos reais do Cloudflare D1 via Wrangler CLI.
     Retorna lista de tuplas (id, title, category, tier).
     """
-    # Query parametrizada via Wrangler CLI (executa no CI com credenciais)
+    # Validação estrita do tier (previne SQL Injection, mesmo que argparse já valide)
+    if tier not in ('A', 'B', 'C'):
+        print(f"[ERRO] Tier inválido: {tier}. Use A, B ou C.")
+        return []
+
+    # Query com valor validado (seguro após verificação acima)
     query = f"SELECT id, title, category, traffic_tier FROM products WHERE traffic_tier = '{tier}' LIMIT 100;"
     
     try:

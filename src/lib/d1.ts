@@ -30,7 +30,7 @@ export interface Compatibility {
 /**
  * Mocks de Emergência para SSG (Prevenção de quebra de Build no CI e SEO Vazio)
  */
-const MOCK_PRODUCTS: Product[] = [
+const MOCK_PRODUCTS: Product[] = import.meta.env.DEV ? [
   {
     id: 'mock-1',
     slug: 'pastilha-de-freio-honda-civic-2018',
@@ -56,12 +56,12 @@ const MOCK_PRODUCTS: Product[] = [
     slug: 'filtro-de-oleo-toyota-corolla-2020',
     category: 'filtro-oleo',
     title: 'Filtro de Óleo Original - Toyota Corolla (2019+)',
-    oem_code: '04152-YZZA6',
+    oem_code: '049-YZZA6',
     lowest_price: 45.50,
     traffic_tier: 'A',
     updated_at: new Date().toISOString()
   }
-];
+] : [];
 
 /**
  * Busca produto no D1 pelo slug parametrizado

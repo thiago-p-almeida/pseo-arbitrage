@@ -68,8 +68,12 @@ const clickId = fbclid || gclid || `org_${crypto.randomUUID().split('-')[0]}`;
 const source = fbclid ? 'meta' : gclid ? 'google' : 'unknown';
 
 // Gera o Sub-ID Stateless (Custo Zero de DB)
-// Fallback seguro: se SECRET_KEY não existir, usa um hash fixo de dev
-const secretKey = env.SECRET_KEY || 'dev-secret-key-nao-usar-em-producao';
+// SECRET_KEY é obrigatória em produção. Sem ela, o tracking de afiliados não funciona.
+if (!env.SECRET_KEY) {
+  console.error('[SECURITY] SECRET_KEY não configurada no wrangler.toml ou secrets.');
+  throw new Error('SECRET_KEY is required for Sub-ID encryption. Please run: wrangler secret put SECRET_KEY');
+}
+const secretKey = env.SECRET_KEY;
 const subId = await generateStatelessSubId(clickId, source, secretKey);
 
 // 7. JSON-LD Schema para Rich Snippets (Seção 4.2 dos docs)
@@ -134,7 +138,10 @@ const jsonLdSchema = {
 
       <!-- Bloco de Anúncio Topo (Lazy Load) -->
       <div class="p-6 bg-gray-50/50">
-        <AdBlock adSlot="1234567890" className="w-full h-[100px] sm:h-[250px] bg-gray-100 rounded-xl flex items-center justify-center" />
+        <AdBlock 
+          adSlot={import.meta.env.DEV ? "1234567890" : (env.ADSENSE_SLOT_TOP || "")} 
+          className="w-full h-[100px] sm:h-[250px] bg-gray-100 rounded-xl flex items-center justify-center" 
+        />
       </div>
 
       <!-- Área de Conversão (CTAs de Afiliado) -->
@@ -168,7 +175,10 @@ const jsonLdSchema = {
 
       <!-- Bloco de Anúncio Rodapé (Lazy Load) -->
       <div class="p-6 border-t border-gray-100">
-        <AdBlock adSlot="0987654321" className="w-full h-[250px] bg-gray-100 rounded-xl flex items-center justify-center" />
+        <AdBlock 
+          adSlot={import.meta.env.DEV ? "0987654321" : (env.ADSENSE_SLOT_BOTTOM || "")} 
+          className="w-full h-[250px] bg-gray-100 rounded-xl flex items-center justify-center" 
+        />
       </div>
 
     </article>

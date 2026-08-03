@@ -31,29 +31,6 @@ CREATE TABLE IF NOT EXISTS automotive_compatibility (
 CREATE INDEX IF NOT EXISTS idx_products_slug ON products(slug);
 CREATE INDEX IF NOT EXISTS idx_auto_make_model ON automotive_compatibility(make, model);
 
--- ÍNDICE FTS5 (Full-Text Search) para busca em milissegundos
-CREATE VIRTUAL TABLE IF NOT EXISTS products_fts USING fts5(
-    title, 
-    oem_code, 
-    ean_upc, 
-    content='products', 
-    content_rowid='id'
-);
-
--- TRIGGERS DE SINCRONIZAÇÃO FTS5 (OBRIGATÓRIO)
-CREATE TRIGGER IF NOT EXISTS products_ai AFTER INSERT ON products BEGIN
-  INSERT INTO products_fts(rowid, title, oem_code, ean_upc) 
-  VALUES (new.id, new.title, new.oem_code, new.ean_upc);
-END;
-
-CREATE TRIGGER IF NOT EXISTS products_ad AFTER DELETE ON products BEGIN
-  INSERT INTO products_fts(products_fts, rowid, title, oem_code, ean_upc) 
-  VALUES('delete', old.id, old.title, old.oem_code, old.ean_upc);
-END;
-
-CREATE TRIGGER IF NOT EXISTS products_au AFTER UPDATE ON products BEGIN
-  INSERT INTO products_fts(products_fts, rowid, title, oem_code, ean_upc) 
-  VALUES('delete', old.id, old.title, old.oem_code, old.ean_upc);
-  INSERT INTO products_fts(rowid, title, oem_code, ean_upc) 
-  VALUES (new.id, new.title, new.oem_code, new.ean_upc);
-END;
+-- FTS5: Desabilitado temporariamente pois content=products exige id INTEGER, mas usamos TEXT (UUIDs)
+-- Para ativar no futuro, substitua content_rowid por triggers que usam o rowid implícito do SQLite
+-- Exemplo: INSERT INTO products_fts(rowid, title, ...) VALUES ((SELECT rowid FROM products WHERE id = new.id), ...)

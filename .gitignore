@@ -28,3 +28,6 @@ pnpm-debug.log*
 
 # wrangler local state (D1, cache, etc)
 .wrangler/
+
+# ETL batch update file (contém dados de catálogo, não deve ser commitado)
+batch_update.sql
