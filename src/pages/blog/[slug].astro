@@ -1,40 +1,32 @@
 ---
+import { getCollection, render } from 'astro:content';
 import Layout from '../../layouts/Layout.astro';
-import { getCollection } from 'astro:content';
 
 export async function getStaticPaths() {
   const posts = await getCollection('blog');
   return posts.map((post) => ({
-    params: { slug: post.slug },
+    params: { slug: post.id },
     props: { post },
   }));
 }
 
 const { post } = Astro.props;
-const { Content } = await post.render();
+const { Content } = await render(post);
+const { title, description, pubDate, author, category } = post.data;
 ---
 
-<Layout
-  title={`${post.data.title} | Blog AutoParts & Tech`}
-  description={post.data.description}
->
+<Layout title={`${title} | Portal de Pesquisa Técnica`} description={description}>
   <article class="max-w-3xl mx-auto px-4 py-12 text-gray-800 leading-relaxed space-y-6">
-    <header class="mb-8">
-      <span class="inline-block bg-blue-50 text-blue-700 text-xs font-semibold px-3 py-1 rounded-full mb-4">
-        {post.data.category}
-      </span>
-      <h1 class="text-3xl font-bold text-slate-900 mb-2">{post.data.title}</h1>
-      <p class="text-sm text-gray-500">
-        Por <span class="font-medium text-gray-700">{post.data.author}</span> &mdash;
-        {new Date(post.data.pubDate).toLocaleDateString('pt-BR', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-        })}
-      </p>
+    <header class="border-b border-gray-200 pb-6 mb-6">
+      <span class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded uppercase tracking-wider">{category}</span>
+      <h1 class="text-3xl font-bold text-slate-900 mt-3 mb-2">{title}</h1>
+      <div class="text-sm text-gray-500 flex gap-4">
+        <span>Por {author}</span>
+        <span>&bull;</span>
+        <time>{new Date(pubDate).toLocaleDateString('pt-BR')}</time>
+      </div>
     </header>
-
-    <div class="text-gray-800 leading-relaxed space-y-4">
+    <div class="space-y-4">
       <Content />
     </div>
   </article>

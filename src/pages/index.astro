@@ -38,7 +38,7 @@ posts.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {posts.map((post) => (
             <a
-              href={`/blog/${post.slug}`}
+              href={`/blog/${post.id}`}
               class="group bg-white rounded-xl border border-slate-200 p-6 shadow-sm hover:shadow-lg hover:border-blue-200 transition-all duration-200 flex flex-col"
             >
               <div class="flex-1 space-y-3">
