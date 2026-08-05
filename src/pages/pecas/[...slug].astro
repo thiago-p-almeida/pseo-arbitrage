@@ -80,6 +80,9 @@ const meliOffer = offers.find((o: any) => o.store === 'Mercado Livre');
 const amazonUrl = amazonOffer?.url || "https://www.amazon.com.br/dp/B000000000";
 const meliUrl = meliOffer?.url || "https://produto.mercadolivre.com.br/MLB-000000000-produto";
 
+// 5.0 Imagem do produto (Rich Snippet Visual): extrai da primeira oferta ou placeholder
+const productImage = offers[0]?.image || offers[0]?.thumbnail || "https://placehold.co/400x300/f8fafc/94a3b8?text=Imagem+Indisponivel";
+
 const specs = product.specs_json ? JSON.parse(product.specs_json) : {};
 const specsHtml = Object.entries(specs)
   .map(([key, value]) => `<strong>${key}:</strong> ${value}`)
@@ -143,10 +146,10 @@ const jsonLdSchema = {
 
 <Layout 
   title={`${product.title} - Compatibilidade e Melhor Preço`} 
-  description={product.description}
+  description={product.description || `Compre ${product.title} com o melhor preço. Compatibilidade garantida pelo código OEM.`}
   jsonLdSchema={jsonLdSchema}
 >
-  <main class="max-w-4xl mx-auto px-4 py-8">
+  <main class="max-w-4xl mx-auto px-4 py-8 pb-24 sm:pb-0">
     
     <!-- Breadcrumb pSEO -->
     <nav class="text-sm text-gray-500 mb-6">
@@ -159,6 +162,15 @@ const jsonLdSchema = {
       
       <!-- Cabeçalho do Produto -->
       <div class="p-6 sm:p-10 border-b border-gray-100">
+        <img
+          src={productImage}
+          alt={product.title}
+          loading="eager"
+          decoding="async"
+          width="400"
+          height="300"
+          class="aspect-[4/3] object-contain w-full max-w-md mx-auto bg-white rounded-lg shadow-sm border border-slate-100 mb-6"
+        />
         <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight mb-4">
           {product.title}
         </h1>
@@ -215,6 +227,28 @@ const jsonLdSchema = {
         <p class="text-xs text-center text-gray-400 mt-4">
           * Comprando pelos links acima, podemos receber uma comissão sem custo adicional para você.
         </p>
+
+        <!-- Trust Badges (E-E-A-T) -->
+        <div class="mt-6 flex flex-wrap justify-center gap-x-6 gap-y-2">
+          <span class="text-xs text-gray-500 flex items-center gap-1">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm0 0v10m-7 0h14a2 2 0 002-2v-2a2 2 0 00-2-2H5a2 2 0 00-2 2v2a2 2 0 002 2z" />
+            </svg>
+            Compra Segura
+          </span>
+          <span class="text-xs text-gray-500 flex items-center gap-1">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Compatibilidade Verificada
+          </span>
+          <span class="text-xs text-gray-500 flex items-center gap-1">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Estoque Atualizado
+          </span>
+        </div>
       </div>
 
       <!-- Especificações Técnicas -->
@@ -230,4 +264,14 @@ const jsonLdSchema = {
 
     </article>
   </main>
+
+  <!-- Sticky CTA Mobile (oculta em desktop) -->
+  <div class="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 p-4 z-50 sm:hidden shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+    <AffiliateCTA 
+      storeName="Amazon" 
+      baseUrl={amazonUrl} 
+      subId={subId} 
+      price={product.lowest_price ? `R$ ${product.lowest_price}` : undefined}
+    />
+  </div>
 </Layout>

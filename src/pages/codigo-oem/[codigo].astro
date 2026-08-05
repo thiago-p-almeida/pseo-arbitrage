@@ -87,6 +87,11 @@ const prices = offers.map((o: any) => Number(o.price)).filter((p: number) => !is
 const lowPrice = prices.length ? Math.min(...prices) : product.lowest_price;
 const highPrice = prices.length ? Math.max(...prices) : product.lowest_price;
 
+// 8. URL Canônica: aponta para rota hierárquica oficial (/pecas/[slug])
+// Elimina conteúdo duplicado entre /codigo-oem/[codigo] e /pecas/[...slug]
+const canonicalUrl = new URL(`/pecas/${product.slug}`, Astro.url.origin).href;
+const metaDescription = product.description || `Encontre peças compatíveis com o código OEM ${codigo}. Verifique aplicação e preços com garantia.`;
+
 const jsonLdSchema = {
   "@context": "https://schema.org/",
   "@type": "Product",
@@ -108,7 +113,8 @@ const jsonLdSchema = {
 
 <Layout 
   title={`${product.title} - Código OEM ${codigo}`} 
-  description={product.description}
+  description={metaDescription}
+  canonicalUrl={canonicalUrl}
   jsonLdSchema={jsonLdSchema}
 >
   <main class="max-w-4xl mx-auto px-4 py-8">

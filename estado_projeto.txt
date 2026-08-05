@@ -56,6 +56,13 @@
 ./src/components/AdBlock.astro
 ./src/components/AffiliateCTA.astro
 ./src/components/TrackingScript.astro
+./src/content
+./src/content.config.ts
+./src/content/blog
+./src/content/blog/artigo-1.md
+./src/content/blog/artigo-3.md
+./src/content/blog/artigo-4.md
+./src/content/blog/artigo-5.md
 ./src/layouts
 ./src/layouts/Layout.astro
 ./src/lib
@@ -64,9 +71,12 @@
 ./src/lib/subid.ts
 ./src/pages
 ./src/pages/[...slug].astro
+./src/pages/about.astro
 ./src/pages/api
 ./src/pages/api/debug-info.ts
 ./src/pages/api/track.ts
+./src/pages/blog
+./src/pages/blog/[slug].astro
 ./src/pages/codigo-oem
 ./src/pages/codigo-oem/[codigo].astro
 ./src/pages/eletronicos
@@ -74,8 +84,10 @@
 ./src/pages/index.astro
 ./src/pages/pecas
 ./src/pages/pecas/[...slug].astro
+./src/pages/privacy.astro
 ./src/pages/robots.txt.ts
 ./src/pages/sitemap.xml.ts
+./src/pages/terms.astro
 ./tailwind.config.mjs
 ./tsconfig.json
 ./wrangler.toml
@@ -156,3 +168,60 @@ export default {
   },
   plugins: [],
 };
+
+=== TAILWIND CONFIG ===
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: ['./src/**/*.{astro,html,js,jsx,md,mdx,svelte,ts,tsx,vue}'],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+};
+
+=== CLINE RULES ===
+---
+paths:
+  - "**/*.ts"
+  - "**/*.astro"
+  - "**/*.mjs"
+  - "**/*.py"
+  - "**/*.sql"
+  - ".github/workflows/*.yml"
+---
+# CLINULES - DIRETRIZES DE ARQUITETURA E OTIMIZAÇÃO (PSEO-ARBITRAGE)
+
+## 1. PERSONA E LIMITAÇÕES DE HARDWARE (CRÍTICO)
+Você é um Principal Edge Engineer especialista em Astro v7, Cloudflare e arquiteturas Zero-Cost. 
+O ambiente do usuário é um Mac 2016 (8GB RAM) com Thermal Throttling.
+- PROIBIDO: Executar ferramentas pesadas localmente (Docker, emuladores).
+- PROIBIDO: Refatorações monolíticas. Trabalhe APENAS em Micro-Sprints.
+
+## 2. ECONOMIA DE TOKENS E OUTPUT (STRICT MODE)
+- **ZERO FLUFF:** Proibido saudações ("Com certeza", "Vou analisar"). Vá direto ao código ou ferramenta.
+- **ZERO PARÁFRASES:** Não reescreva o que o usuário pediu.
+- **EDIÇÃO CIRÚRGICA:** É ESTRITAMENTE PROIBIDO usar `write_to_file` para reescrever arquivos inteiros. Use SEMPRE `replace_in_file` alterando APENAS o bloco necessário.
+
+## 3. PROTOCOLO DE EXECUÇÃO (STEP-BY-STEP)
+Para CADA interação, siga o ciclo:
+1. **Auditoria:** Leia os arquivos (respeitando limites de contexto).
+2. **Plano:** Escreva um plano enumerado em micro-passos.
+3. **Permissão:** Pergunte: "Posso prosseguir com o Passo 1?".
+4. **Execução:** Após o "Sim", execute APENAS o Passo 1 e aguarde.
+
+## 4. EFICIÊNCIA DE FERRAMENTAS E CONTEXTO
+- **Leitura:** Não leia arquivos compilados (`dist/`, `.astro/`) ou locks (`pnpm-lock.yaml`). Ao ler arquivos grandes, use parâmetros para ler no máximo 100-150 linhas por vez.
+- **Terminal:** NUNCA gere logs gigantes. Use redirecionamento ou limite a saída (`pnpm build 2>&1 | tail -n 30`).
+
+## 5. REGRAS INQUEBRÁVEIS DE ARQUITETURA
+- **Edge-First:** Zero Node.js nativo (`fs`, `path`). Use Web APIs.
+- **Proteção D1:** Nenhuma query GET direta em runtime. OBRIGATÓRIO usar `caches.default` (SWR) via `src/lib/cache.ts`.
+- **Wrangler/Vite Sync:** O Astro não pode tentar ler `entry.mjs` antes da pasta `dist` ser gerada.
+
+## 6. CI/CD E PASTAS OCULTAS (ALERTA DE PONTO CEGO)
+- A pasta `.github/workflows/` é o coração da nossa automação (Deploy e ETL Curva ABC).
+- Por começar com um ponto (`.`), ferramentas de listagem genérica podem ocultá-la.
+- É OBRIGATÓRIO: Sempre que a tarefa envolver ETL, Deploy, Cron Jobs ou GitHub Actions, você deve listar e ler os arquivos DENTRO de `.github/workflows/` explicitamente.
+
+## 7. BACKUP
+Após validar um incremento, acione o procedimento em `skills/backup-sprint.md`.
