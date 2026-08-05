@@ -1,0 +1,49 @@
+# ==============================================================================
+# .clineignore — Otimização Extrema de Contexto para Cline / VS Code
+# ==============================================================================
+
+# 1. Dependências e Gerenciadores de Pacotes (Arquivos Gigantescos)
+node_modules/
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+npm-debug.log*
+pnpm-debug.log*
+
+# 2. Diretórios de Build, Transpilação e Adaptadores de Borda
+dist/
+build/
+out/
+.astro/
+.wrangler/
+.next/
+.output/
+.cache/
+coverage/
+
+# 3. Arquivos de Ambiente e Segurança (Nunca indexar)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# 4. Binários, Imagens e Mídia (Inúteis para LLMs de Código)
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.ico
+*.webp
+*.avif
+*.mp4
+*.mp3
+*.pdf
+*.zip
+*.tar
+*.tar.gz
+*.gz
+*.sqlite
+*.sqlite3
+*.db

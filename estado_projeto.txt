@@ -1,0 +1,158 @@
+=== ESTRUTURA DE DIRETÓRIOS ===
+.
+./.astro
+./.backup
+./.backup/RESTORE.md
+./.backup/d1-state-backup
+./.backup/d1-state-backup/miniflare-D1DatabaseObject
+./.backup/d1-state-backup/miniflare-D1DatabaseObject/1d0ce5fe7d34df6ae72890722aeeebe9cfbe11eed465f99b6f60a2359313d4bc.sqlite
+./.backup/d1-state-backup/miniflare-D1DatabaseObject/1d0ce5fe7d34df6ae72890722aeeebe9cfbe11eed465f99b6f60a2359313d4bc.sqlite-shm
+./.backup/d1-state-backup/miniflare-D1DatabaseObject/1d0ce5fe7d34df6ae72890722aeeebe9cfbe11eed465f99b6f60a2359313d4bc.sqlite-wal
+./.backup/d1-state-backup/miniflare-D1DatabaseObject/metadata.sqlite
+./.backup/d1-state-backup/miniflare-D1DatabaseObject/metadata.sqlite-shm
+./.backup/d1-state-backup/miniflare-D1DatabaseObject/metadata.sqlite-wal
+./.backup/source-snapshot.tar.gz
+./.clineignore
+./.clinerules
+./.git
+./.github
+./.github/workflows
+./.github/workflows/deploy.yml
+./.github/workflows/etl-curve-a.yml
+./.github/workflows/etl-curve-b.yml
+./.github/workflows/etl-curve-bc.yml
+./.github/workflows/etl-curve-c.yml
+./.gitignore
+./.vscode
+./.vscode/extensions.json
+./.vscode/launch.json
+./.wrangler
+./AGENTS.md
+./CLAUDE.md
+./README.md
+./astro.config.mjs
+./db
+./db/schema.sql
+./db/seed.sql
+./dist
+./docs
+./docs/Fase 1: Fundamentos de Negócio e Infraestrutura Edge.md
+./docs/Fase 2: Engenharia de Dados, ETL e SEO Programático (pSEO).md
+./docs/Fase 3: AdTech Server-Side e Blueprint para Agentes de IA.md
+./estado_projeto.txt
+./node_modules
+./package.json
+./pnpm-lock.yaml
+./pnpm-workspace.yaml
+./public
+./public/favicon.ico
+./public/favicon.svg
+./scripts
+./scripts/etl.py
+./skills
+./skills/backup-sprint.md
+./src
+./src/components
+./src/components/AdBlock.astro
+./src/components/AffiliateCTA.astro
+./src/components/TrackingScript.astro
+./src/layouts
+./src/layouts/Layout.astro
+./src/lib
+./src/lib/cache.ts
+./src/lib/d1.ts
+./src/lib/subid.ts
+./src/pages
+./src/pages/[...slug].astro
+./src/pages/api
+./src/pages/api/debug-info.ts
+./src/pages/api/track.ts
+./src/pages/codigo-oem
+./src/pages/codigo-oem/[codigo].astro
+./src/pages/eletronicos
+./src/pages/eletronicos/[...slug].astro
+./src/pages/index.astro
+./src/pages/pecas
+./src/pages/pecas/[...slug].astro
+./src/pages/robots.txt.ts
+./src/pages/sitemap.xml.ts
+./tailwind.config.mjs
+./tsconfig.json
+./wrangler.toml
+
+
+=== PACKAGE.JSON ===
+{
+  "name": "pseo-arbitrage",
+  "type": "module",
+  "version": "0.0.1",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/cloudflare": "^14.1.7",
+    "@astrojs/tailwind": "^6.0.2",
+    "astro": "^7.1.6"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.19",
+    "wrangler": "4.115.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp",
+      "workerd"
+    ]
+  }
+}
+
+
+=== ASTRO CONFIG ===
+import { defineConfig } from 'astro/config';
+import tailwind from '@astrojs/tailwind';
+import cloudflare from '@astrojs/cloudflare';
+
+// https://astro.build/config
+export default defineConfig({
+  output: 'static',
+  integrations: [tailwind()],
+  adapter: cloudflare({
+    imageService: 'cloudflare',
+    configPath: './wrangler.toml'
+  }),
+});
+
+=== WRANGLER TOML ===
+name = "pseo-arbitrage"
+compatibility_date = "2025-06-01"
+
+# Binding do Banco de Dados Cloudflare D1
+[[d1_databases]]
+binding = "DB"
+database_name = "pseo-db"
+database_id = "b86660ea-2b4b-487a-abc6-2415f17d8822"
+
+# Variáveis de Ambiente Públicas
+# (As chaves secretas e tokens estão configuradas com segurança diretamente no painel da Cloudflare)
+[vars]
+SITE_URL = "https://pseo-arbitrage.pages.dev"
+DEBUG_MODE = "false"
+AMAZON_MARKETPLACE = "www.amazon.com.br"
+AMAZON_REGION = "us-east-1"
+
+=== TAILWIND CONFIG ===
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: ['./src/**/*.{astro,html,js,jsx,md,mdx,svelte,ts,tsx,vue}'],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+};
