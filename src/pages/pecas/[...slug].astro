@@ -89,8 +89,8 @@ const meliUrl = meliOffer?.url || "https://produto.mercadolivre.com.br/MLB-00000
 
 // 5.0 Imagem do produto (Rich Snippet Visual): valida tipo string antes de atribuir; fallback %20 (não +)
 const PLACEHOLDER_IMG = "https://placehold.co/400x300/f8fafc/94a3b8?text=Imagem%20Indisponivel";
-const rawImg = offers[0]?.image || offers[0]?.thumbnail || product.image_url;
-const productImage = typeof rawImg === 'string' && rawImg.trim() !== '' ? rawImg : PLACEHOLDER_IMG;
+  const rawImg = offers[0]?.image || offers[0]?.thumbnail || product.image_url;
+  const productImage = (typeof rawImg === 'string' && rawImg.trim() !== '' ? rawImg : PLACEHOLDER_IMG).replace(/^"|"$/g, '');
 
 const specs = product.specs_json ? JSON.parse(product.specs_json) : {};
 
@@ -177,6 +177,7 @@ const jsonLdSchema = {
           decoding="async"
           width="400"
           height="300"
+          onerror="this.onerror=null;this.src='https://placehold.co/400x300/f8fafc/94a3b8?text=Imagem%20Indisponivel';"
           class="aspect-[4/3] object-contain w-full max-w-md mx-auto bg-white rounded-lg shadow-sm border border-slate-100 mb-6"
         />
         <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight mb-4">
