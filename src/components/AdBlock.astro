@@ -9,7 +9,7 @@ interface Props {
 const {
   adSlot,
   adClient = Astro.locals.cfContext?.env?.ADSENSE_CLIENT_ID || undefined,
-  className = "min-h-[280px] md:min-h-[250px] w-full bg-slate-50 flex items-center justify-center overflow-hidden"
+  className = "min-h-[280px] md:min-h-[250px] w-full bg-transparent border border-dashed border-slate-200/60 flex items-center justify-center overflow-hidden"
 } = Astro.props;
 ---
 

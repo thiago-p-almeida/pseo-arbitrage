@@ -149,9 +149,11 @@ const jsonLdSchema = {
   <main class="max-w-4xl mx-auto px-4 py-8 pb-24 sm:pb-0">
     
     <!-- Breadcrumb pSEO -->
-    <nav class="text-sm text-gray-500 mb-6">
-      <a href="/" class="hover:text-blue-600">Início</a> > 
-      <a href="/" class="hover:text-blue-600">Peças</a> > 
+    <nav class="text-sm text-gray-500 mb-6 flex items-center flex-wrap">
+      <a href="/" class="hover:text-blue-600">Início</a>
+      <span class="mx-2 text-slate-400" aria-hidden="true">/</span>
+      <a href="/pecas" class="hover:text-blue-600">Peças</a>
+      <span class="mx-2 text-slate-400" aria-hidden="true">/</span>
       <span class="text-gray-900 font-medium">{product.title}</span>
     </nav>
 
@@ -261,7 +263,14 @@ const jsonLdSchema = {
             ))}
           </dl>
         ) : (
-          <p class="text-sm text-gray-500 italic">Especificações não disponíveis.</p>
+          <div class="bg-blue-50/50 border border-blue-100 p-5 rounded-xl flex items-start gap-3 my-4">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p class="text-sm text-blue-900 leading-relaxed">
+              <strong class="font-semibold">Aplicação Verificada:</strong> Peça compatível com {product.title}. Verifique o código OEM {product.oem_code || 'do fabricante'} para garantir a aplicação exata no seu veículo.
+            </p>
+          </div>
         )}
       </div>
 

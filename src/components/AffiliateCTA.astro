@@ -14,6 +14,18 @@ const { baseUrl, subId, storeName, price } = Astro.props;
 const finalUrl = new URL(baseUrl);
 finalUrl.searchParams.set('subid', subId);
 
+// Formatação PT-BR do preço (R$ 120,50). Aceita number ou string numérica.
+// Se a string já vier formatada ("R$ 120,50") ou não for parseável, mantém original.
+const formatBRL = (raw?: string | number) => {
+  if (!raw && raw !== 0) return undefined;
+  const num = typeof raw === 'number' ? raw : Number(String(raw).replace(/[^\d.,-]/g, '').replace(/\.(?=\d{3}\b)/g, '').replace(',', '.'));
+  if (!isNaN(num) && isFinite(num)) {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(num);
+  }
+  return String(raw);
+};
+const formattedPrice = formatBRL(price);
+
 // Cores dinâmicas baseadas na loja
 const isAmazon = storeName === 'Amazon';
 const btnColor = isAmazon 
@@ -32,7 +44,7 @@ const btnColor = isAmazon
 >
   <span class="flex flex-col">
     <span>Ver oferta no {storeName}</span>
-    {price && <span class="text-sm font-medium opacity-80">A partir de {price}</span>}
+    {formattedPrice && <span class="text-sm font-medium opacity-80">A partir de {formattedPrice}</span>}
   </span>
   
   <!-- Ícone de seta com animação no hover -->
