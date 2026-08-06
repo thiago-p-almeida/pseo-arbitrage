@@ -84,9 +84,6 @@ const meliUrl = meliOffer?.url || "https://produto.mercadolivre.com.br/MLB-00000
 const productImage = offers[0]?.image || offers[0]?.thumbnail || "https://placehold.co/400x300/f8fafc/94a3b8?text=Imagem+Indisponivel";
 
 const specs = product.specs_json ? JSON.parse(product.specs_json) : {};
-const specsHtml = Object.entries(specs)
-  .map(([key, value]) => `<strong>${key}:</strong> ${value}`)
-  .join('<br>') || '<p>Especificações não disponíveis.</p>';
 
 // 5.1 Busca compatibilidades automotivas (tabela N:N) com proteção SWR (Regra Inquebrável)
 const compatibilities = product.id ? await (async () => {
@@ -252,9 +249,20 @@ const jsonLdSchema = {
       </div>
 
       <!-- Especificações Técnicas -->
-      <div class="p-6 sm:p-10 border-t border-gray-100 prose prose-blue max-w-none">
-        <h3>Especificações Técnicas</h3>
-        <div class="bg-gray-50 rounded-lg p-4 text-sm text-gray-700" set:html={specsHtml} />
+      <div class="p-6 sm:p-10 border-t border-gray-100">
+        <h3 class="text-lg font-bold text-slate-900 mb-4">Especificações Técnicas</h3>
+        {Object.keys(specs).length > 0 ? (
+          <dl class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm bg-slate-50 p-4 rounded-lg border border-slate-100">
+            {Object.entries(specs).map(([key, value]) => (
+              <div class="flex flex-col">
+                <dt class="font-semibold text-slate-700 capitalize">{key.replace(/_/g, ' ')}</dt>
+                <dd class="text-slate-600">{value}</dd>
+              </div>
+            ))}
+          </dl>
+        ) : (
+          <p class="text-sm text-gray-500 italic">Especificações não disponíveis.</p>
+        )}
       </div>
 
       <!-- Bloco de Anúncio Rodapé -->
