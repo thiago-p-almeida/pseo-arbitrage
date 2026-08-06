@@ -1,0 +1,56 @@
+---
+// src/pages/pecas/index.astro
+// Hub estática 100% pré-renderizada (Zero-Cost). Intercepta /pecas antes do catch-all [...slug].
+export const prerender = true;
+
+import Layout from '../../layouts/Layout.astro';
+
+const categories = [
+  { name: 'Freios', icon: 'M12 2L2 12l10 10 10-10L12 2z', color: 'text-red-600', bg: 'bg-red-50' },
+  { name: 'Motor', icon: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z', color: 'text-amber-600', bg: 'bg-amber-50' },
+  { name: 'Filtros', icon: 'M3 6h18M3 12h18M3 18h18', color: 'text-blue-600', bg: 'bg-blue-50' },
+  { name: 'Suspensão', icon: 'M12 4v16m-8-8h16', color: 'text-green-600', bg: 'bg-green-50' },
+];
+---
+
+<Layout
+  title="Catálogo de Peças | AutoParts & Tech"
+  description="Catálogo de Peças: navegue pelas categorias do nosso banco de dados automotivo."
+>
+  <section class="max-w-7xl mx-auto px-4 py-12">
+    <!-- Hero -->
+    <div class="text-center mb-12">
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight mb-4">
+        Catálogo de Peças
+      </h1>
+      <p class="text-lg text-gray-600 leading-relaxed max-w-2xl mx-auto">
+        Navegue pelas categorias do nosso banco de dados
+      </p>
+    </div>
+
+    <!-- Grid responsivo -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+      {categories.map((cat) => (
+        <a
+          href="#"
+          class={`group ${cat.bg} rounded-2xl p-6 border border-gray-100 hover:shadow-md transition-shadow flex flex-col items-center justify-center text-center`}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class={`h-12 w-12 ${cat.color} mb-4`}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2"
+            aria-hidden="true"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" d={cat.icon} />
+          </svg>
+          <h2 class="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
+            {cat.name}
+          </h2>
+        </a>
+      ))}
+    </div>
+  </section>
+</Layout>

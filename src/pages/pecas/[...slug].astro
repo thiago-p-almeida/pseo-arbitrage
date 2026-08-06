@@ -73,15 +73,24 @@ if (cachedRes.status === 404) {
 
 const product = await cachedRes.json();
 
-// 5. Mapeia ofertas do schema
-const offers = product.offers_json ? JSON.parse(product.offers_json) : [];
-const amazonOffer = offers.find((o: any) => o.store === 'Amazon');
-const meliOffer = offers.find((o: any) => o.store === 'Mercado Livre');
+// 5. Mapeia ofertas do schema (try/catch robusto: previne page crash se offers_json for null/malformado)
+let offers: any[] = [];
+try {
+  offers = product.offers_json ? JSON.parse(product.offers_json) : [];
+  if (!Array.isArray(offers)) offers = [];
+} catch (e) {
+  console.error('offers_json parse falhou:', e, 'raw:', product.offers_json);
+  offers = [];
+}
+const amazonOffer = offers.find((o: any) => o?.store === 'Amazon');
+const meliOffer = offers.find((o: any) => o?.store === 'Mercado Livre');
 const amazonUrl = amazonOffer?.url || "https://www.amazon.com.br/dp/B000000000";
 const meliUrl = meliOffer?.url || "https://produto.mercadolivre.com.br/MLB-000000000-produto";
 
-// 5.0 Imagem do produto (Rich Snippet Visual): extrai da primeira oferta ou placeholder
-const productImage = offers[0]?.image || offers[0]?.thumbnail || "https://placehold.co/400x300/f8fafc/94a3b8?text=Imagem+Indisponivel";
+// 5.0 Imagem do produto (Rich Snippet Visual): valida tipo string antes de atribuir; fallback %20 (não +)
+const PLACEHOLDER_IMG = "https://placehold.co/400x300/f8fafc/94a3b8?text=Imagem%20Indisponivel";
+const rawImg = offers[0]?.image || offers[0]?.thumbnail || product.image_url;
+const productImage = typeof rawImg === 'string' && rawImg.trim() !== '' ? rawImg : PLACEHOLDER_IMG;
 
 const specs = product.specs_json ? JSON.parse(product.specs_json) : {};
 
